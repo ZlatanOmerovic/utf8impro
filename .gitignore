@@ -1,0 +1,6 @@
+# build artifacts
+build/*
+!build/.gitkeep
+
+# test artifacts
+main-improved.c

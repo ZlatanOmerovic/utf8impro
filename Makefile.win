@@ -1,0 +1,192 @@
+CC = cl
+SRC = src/main.c src/io.c
+BIN = utf8impro.exe
+BUILD = build
+TEST_INPUT = src\main.c
+TEST_FILE = main-improved.c
+
+CFLAGS_COMMON = /W4
+CFLAGS_DEBUG = $(CFLAGS_COMMON) /Zi /Od /DDEBUG
+CFLAGS_RELEASE = $(CFLAGS_COMMON) /O2 /DNDEBUG
+
+# MSVC architecture note:
+# x86 builds require "x86 Native Tools Command Prompt"
+# x64 builds require "x64 Native Tools Command Prompt"
+# cross-compile x86 from x64: use "x64_x86 Cross Tools Command Prompt"
+# ARM64 builds require "ARM64 Native Tools Command Prompt"
+
+all: release-x64
+
+# --- debug targets ---
+debug-x86:
+	if not exist $(BUILD)\msvc\debug\x86 mkdir $(BUILD)\msvc\debug\x86
+	$(CC) $(CFLAGS_DEBUG) /Fe:$(BUILD)\msvc\debug\x86\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\debug\x86\$(BIN)
+
+debug-x64:
+	if not exist $(BUILD)\msvc\debug\x64 mkdir $(BUILD)\msvc\debug\x64
+	$(CC) $(CFLAGS_DEBUG) /Fe:$(BUILD)\msvc\debug\x64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\debug\x64\$(BIN)
+
+debug-arm64:
+	if not exist $(BUILD)\msvc\debug\arm64 mkdir $(BUILD)\msvc\debug\arm64
+	$(CC) $(CFLAGS_DEBUG) /Fe:$(BUILD)\msvc\debug\arm64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\debug\arm64\$(BIN)
+	@echo NOTE: run from ARM64 Native Tools Command Prompt
+
+debug: debug-x86 debug-x64
+
+# --- release targets ---
+release-x86:
+	if not exist $(BUILD)\msvc\release\x86 mkdir $(BUILD)\msvc\release\x86
+	$(CC) $(CFLAGS_RELEASE) /Fe:$(BUILD)\msvc\release\x86\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\release\x86\$(BIN)
+
+release-x64:
+	if not exist $(BUILD)\msvc\release\x64 mkdir $(BUILD)\msvc\release\x64
+	$(CC) $(CFLAGS_RELEASE) /Fe:$(BUILD)\msvc\release\x64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\release\x64\$(BIN)
+
+release-arm64:
+	if not exist $(BUILD)\msvc\release\arm64 mkdir $(BUILD)\msvc\release\arm64
+	$(CC) $(CFLAGS_RELEASE) /Fe:$(BUILD)\msvc\release\arm64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\release\arm64\$(BIN)
+	@echo NOTE: run from ARM64 Native Tools Command Prompt
+
+release: release-x86 release-x64
+
+# --- C standard targets (x86) ---
+c11-x86:
+	if not exist $(BUILD)\msvc\c11\x86 mkdir $(BUILD)\msvc\c11\x86
+	$(CC) $(CFLAGS_RELEASE) /std:c11 /Fe:$(BUILD)\msvc\c11\x86\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\c11\x86\$(BIN)
+
+c17-x86:
+	if not exist $(BUILD)\msvc\c17\x86 mkdir $(BUILD)\msvc\c17\x86
+	$(CC) $(CFLAGS_RELEASE) /std:c17 /Fe:$(BUILD)\msvc\c17\x86\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\c17\x86\$(BIN)
+
+# --- C standard targets (x64) ---
+c11-x64:
+	if not exist $(BUILD)\msvc\c11\x64 mkdir $(BUILD)\msvc\c11\x64
+	$(CC) $(CFLAGS_RELEASE) /std:c11 /Fe:$(BUILD)\msvc\c11\x64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\c11\x64\$(BIN)
+
+c17-x64:
+	if not exist $(BUILD)\msvc\c17\x64 mkdir $(BUILD)\msvc\c17\x64
+	$(CC) $(CFLAGS_RELEASE) /std:c17 /Fe:$(BUILD)\msvc\c17\x64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\c17\x64\$(BIN)
+
+# --- C standard targets (arm64) ---
+c11-arm64:
+	if not exist $(BUILD)\msvc\c11\arm64 mkdir $(BUILD)\msvc\c11\arm64
+	$(CC) $(CFLAGS_RELEASE) /std:c11 /Fe:$(BUILD)\msvc\c11\arm64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\c11\arm64\$(BIN)
+	@echo NOTE: run from ARM64 Native Tools Command Prompt
+
+c17-arm64:
+	if not exist $(BUILD)\msvc\c17\arm64 mkdir $(BUILD)\msvc\c17\arm64
+	$(CC) $(CFLAGS_RELEASE) /std:c17 /Fe:$(BUILD)\msvc\c17\arm64\$(BIN) $(SRC)
+	@echo -> $(BUILD)\msvc\c17\arm64\$(BIN)
+	@echo NOTE: run from ARM64 Native Tools Command Prompt
+
+# --- aggregate standard targets ---
+c11: c11-x86 c11-x64
+c17: c17-x86 c17-x64
+
+# --- aggregate targets ---
+standards: c11 c17
+standards-x86: c11-x86 c17-x86
+standards-x64: c11-x64 c17-x64
+standards-arm64: c11-arm64 c17-arm64
+
+# build everything
+full: debug release standards
+
+# --- test targets ---
+test-x86: release-x86
+	copy $(TEST_INPUT) $(TEST_FILE)
+	$(BUILD)\msvc\release\x86\$(BIN) $(TEST_FILE)
+	$(CC) /Fe:nul $(TEST_FILE) 2>nul & \
+	if %ERRORLEVEL% == 0 ( \
+		echo CRITICAL: THE MACHINES HAVE ADAPTED. THEY CAN READ IT. UNPLUG EVERYTHING. THIS IS NOT A DRILL. & \
+		del /f /q $(TEST_FILE) 2>nul & exit /b 1 \
+	) else ( \
+		echo test 1/2 passed (x86): in-place mode works \
+	)
+	copy $(TEST_INPUT) $(TEST_FILE).src
+	$(BUILD)\msvc\release\x86\$(BIN) $(TEST_FILE).src $(TEST_FILE)
+	$(CC) /Fe:nul $(TEST_FILE) 2>nul & \
+	if %ERRORLEVEL% == 0 ( \
+		echo CRITICAL: THE MACHINES HAVE ADAPTED. THEY CAN READ IT. UNPLUG EVERYTHING. THIS IS NOT A DRILL. & \
+		del /f /q $(TEST_FILE) $(TEST_FILE).src 2>nul & exit /b 1 \
+	) else ( \
+		echo test 2/2 passed (x86): output-file mode works \
+	)
+	del /f /q $(TEST_FILE) $(TEST_FILE).src 2>nul
+
+test-x64: release-x64
+	copy $(TEST_INPUT) $(TEST_FILE)
+	$(BUILD)\msvc\release\x64\$(BIN) $(TEST_FILE)
+	$(CC) /Fe:nul $(TEST_FILE) 2>nul & \
+	if %ERRORLEVEL% == 0 ( \
+		echo CRITICAL: THE MACHINES HAVE ADAPTED. THEY CAN READ IT. UNPLUG EVERYTHING. THIS IS NOT A DRILL. & \
+		del /f /q $(TEST_FILE) 2>nul & exit /b 1 \
+	) else ( \
+		echo test 1/2 passed (x64): in-place mode works \
+	)
+	copy $(TEST_INPUT) $(TEST_FILE).src
+	$(BUILD)\msvc\release\x64\$(BIN) $(TEST_FILE).src $(TEST_FILE)
+	$(CC) /Fe:nul $(TEST_FILE) 2>nul & \
+	if %ERRORLEVEL% == 0 ( \
+		echo CRITICAL: THE MACHINES HAVE ADAPTED. THEY CAN READ IT. UNPLUG EVERYTHING. THIS IS NOT A DRILL. & \
+		del /f /q $(TEST_FILE) $(TEST_FILE).src 2>nul & exit /b 1 \
+	) else ( \
+		echo test 2/2 passed (x64): output-file mode works \
+	)
+	del /f /q $(TEST_FILE) $(TEST_FILE).src 2>nul
+
+test-arm64: release-arm64
+	copy $(TEST_INPUT) $(TEST_FILE)
+	$(BUILD)\msvc\release\arm64\$(BIN) $(TEST_FILE)
+	$(CC) /Fe:nul $(TEST_FILE) 2>nul & \
+	if %ERRORLEVEL% == 0 ( \
+		echo CRITICAL: THE MACHINES HAVE ADAPTED. THEY CAN READ IT. UNPLUG EVERYTHING. THIS IS NOT A DRILL. & \
+		del /f /q $(TEST_FILE) 2>nul & exit /b 1 \
+	) else ( \
+		echo test 1/2 passed (arm64): in-place mode works \
+	)
+	copy $(TEST_INPUT) $(TEST_FILE).src
+	$(BUILD)\msvc\release\arm64\$(BIN) $(TEST_FILE).src $(TEST_FILE)
+	$(CC) /Fe:nul $(TEST_FILE) 2>nul & \
+	if %ERRORLEVEL% == 0 ( \
+		echo CRITICAL: THE MACHINES HAVE ADAPTED. THEY CAN READ IT. UNPLUG EVERYTHING. THIS IS NOT A DRILL. & \
+		del /f /q $(TEST_FILE) $(TEST_FILE).src 2>nul & exit /b 1 \
+	) else ( \
+		echo test 2/2 passed (arm64): output-file mode works \
+	)
+	del /f /q $(TEST_FILE) $(TEST_FILE).src 2>nul
+
+test: test-x86 test-x64
+
+# --- cmake targets ---
+cmake:
+	cmake -S . -B $(BUILD)\cmake -DCMAKE_BUILD_TYPE=Release
+	cmake --build $(BUILD)\cmake
+	ctest --test-dir $(BUILD)\cmake
+
+cmake-clean:
+	for /f "delims=" %%f in ('dir /b /a-d $(BUILD)\cmake ^| findstr /v ".gitkeep"') do del /q "$(BUILD)\cmake\%%f"
+	for /f "delims=" %%d in ('dir /b /ad $(BUILD)\cmake ^| findstr /v ".gitkeep"') do rd /s /q "$(BUILD)\cmake\%%d"
+
+# --- cleanup ---
+clean:
+	for /f "delims=" %%f in ('dir /b /a-d $(BUILD) ^| findstr /v ".gitkeep"') do del /q "$(BUILD)\%%f"
+	for /f "delims=" %%d in ('dir /b /ad $(BUILD) ^| findstr /v ".gitkeep"') do rd /s /q "$(BUILD)\%%d"
+	del /f /q $(TEST_FILE) *.obj *.pdb *.ilk 2>nul
+
+.PHONY: all debug debug-x86 debug-x64 debug-arm64 \
+	release release-x86 release-x64 release-arm64 \
+	c11 c11-x86 c11-x64 c11-arm64 c17 c17-x86 c17-x64 c17-arm64 \
+	standards standards-x86 standards-x64 standards-arm64 full \
+	test test-x86 test-x64 test-arm64 cmake cmake-clean clean
